@@ -18,7 +18,7 @@ public class Simulator
         super();
     }
 
-    void start ( String portName ) throws Exception
+    void start ( String portName, PacketsFactory factory ) throws Exception
     {
         CommPortIdentifier portIdentifier = CommPortIdentifier.getPortIdentifier(portName);
         if ( portIdentifier.isCurrentlyOwned() )
@@ -36,7 +36,7 @@ public class Simulator
                 serialPort.setFlowControlMode(serialPort.FLOWCONTROL_RTSCTS_OUT);
                 OutputStream out = serialPort.getOutputStream();
 
-                runnable = new Thread(new SerialWriter(out));
+                runnable = new Thread(new SerialWriter(out,factory));
                 runnable.start();
             }
             else
@@ -48,6 +48,8 @@ public class Simulator
 
     public static class SerialWriter implements Runnable
     {
+    	PacketsFactory factory;
+    	
         OutputStream out;
         Scanner user_input = new Scanner( System.in );
         public static final String connectionCommand =
@@ -175,9 +177,10 @@ public class Simulator
                         "</upstreamPacket>" +
                         "</packet>";
         /* ---------------------------------------------------------------------------------------------- */
-        public SerialWriter ( OutputStream out )
+        public SerialWriter ( OutputStream out,PacketsFactory factory )
         {
             this.out = out;
+            this.factory = factory;
         }
 
         public void run ()
@@ -210,6 +213,7 @@ public class Simulator
                     /* ---------------------------------------------------------------------------------------------- */
                     String command = "";
                     command = user_input.next( );
+                    byte opCode;
                     System.out.println("\nYou have entered: "+command);
                     if (command.equalsIgnoreCase("Q")){
                         System.out.println("Exiting . . . ");
@@ -217,67 +221,87 @@ public class Simulator
                     }
                     else if(command.equalsIgnoreCase("T")){
                         bytes = tempCommand.getBytes();
+                    	opCode = 100;
                     }
                     else if(command.equalsIgnoreCase("E")){
                         bytes = energyCommand.getBytes();
+                        opCode = 101;
                     }
                     else if(command.equalsIgnoreCase("C")){
                         bytes = connectionCommand.getBytes();
+                        opCode = 102;
                     }
                     else if(command.equalsIgnoreCase("D")){
                         bytes = disConnectionCommand.getBytes();
+                        opCode = 103;
                     }
                     /* --------------------------------- FOR TESTING ONLY ------------------------------------------- */
                     else if(command.equalsIgnoreCase("T1")){
                         bytes = moveToSafeCommand.getBytes();
+                        opCode = 1;
                     }
                     else if(command.equalsIgnoreCase("T2")){
                         bytes = moveToSBCommand.getBytes();
+                        opCode = 2;
                     }
                     else if(command.equalsIgnoreCase("T3")){
                         bytes = moveToOppCommand.getBytes();
+                        opCode = 3;
                     }
                     else if(command.equalsIgnoreCase("T4")){
                         bytes = formatEngCommand.getBytes();
+                        opCode = 4;
                     }
                     else if(command.equalsIgnoreCase("T5")){
                         bytes = formatTempCommand.getBytes();
+                        opCode = 5;
                     }
                     else if(command.equalsIgnoreCase("T6")){
                         bytes = formatStaticCommand.getBytes();
+                        opCode = 6;
                     }
                     else if(command.equalsIgnoreCase("T7")){
                         bytes = formatMixedCommand.getBytes();
+                        opCode = 7;
                     }
                     else if(command.equalsIgnoreCase("T8")){
                         bytes = sbandOnCommand.getBytes();
+                        opCode = 8;
                     }
                     else if(command.equalsIgnoreCase("T9")){
                         bytes = sbandSBCommand.getBytes();
+                        opCode = 9;
+                        
                     }
                     else if(command.equalsIgnoreCase("T10")){
                         bytes = payloadOnCommand.getBytes();
+                        opCode = 10;
                     }
                     else if(command.equalsIgnoreCase("T11")){
                         bytes = payloadSBCommand.getBytes();
+                        opCode = 11;
                     }
                     else if(command.equalsIgnoreCase("T12")){
                         bytes = thermalCTRLOnCommand.getBytes();
+                        opCode = 12;
                     }
                     else if(command.equalsIgnoreCase("T13")){
                         bytes = thermalCTRLSBCommand.getBytes();
+                        opCode = 13;
                     }
                     /* ---------------------------------------------------------------------------------------------- */
                     else{
                         System.out.println("Invalid Command \n");
                         continue;
                     }
-                    if(bytes != null){
-                        for (int i=0; i<bytes.length; i++){
-                            this.out.write(bytes[i]);
-                        }
-                        this.out.write(10);
+                    
+                    CMDPacket packet =  factory.createCMDPacket(12332, opCode, 1, 0);
+                    bytes = packet.toBytes();
+                    for (int i=0; i<bytes.length; i++){
+                        this.out.write(bytes[i]);
                     }
+                    this.out.write(10);
+
                     this.out.flush();
                 }
                 //this.out.close();
@@ -291,20 +315,26 @@ public class Simulator
     {
         try
         {
+        	PacketsFactory factory = new XmlPacketsFactory();
             int argSize = args.length;
             String port = "COM1";
-            if (argSize == 1 ){
-                String arg = args[0].trim();
-                if (args[0].contains("COM")){
-                    port = arg;
-                }
-                else {
-                    System.out.println("Incorrect usage: please enter serial port, e.g: COM1");
-                    return;
+            for(int i=0;i<args.length;i++){
+            	if(args[i].equalsIgnoreCase("-port")&&i==args.length){
+            		i++;
+                    if (args[i].contains("COM")){
+                        port = args[i];
+                    }
+            	}
+                else if(args[i].equalsIgnoreCase("-p")&&i==args.length){
+                	i++;
+                	if (args[i].equalsIgnoreCase("binary")){
+                		factory = new BinPacketsFactory();
+                	}
                 }
             }
+            
             Simulator simulator = new Simulator();
-            simulator.start(port);
+            simulator.start(port,factory);
             simulator.runnable.join();
         }
         catch ( Exception e )
