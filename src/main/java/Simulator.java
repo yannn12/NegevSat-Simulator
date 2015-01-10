@@ -20,36 +20,15 @@ public class Simulator
 
     void start ( String portName, PacketsFactory factory ) throws Exception
     {
-        CommPortIdentifier portIdentifier = CommPortIdentifier.getPortIdentifier(portName);
-        if ( portIdentifier.isCurrentlyOwned() )
-        {
-            System.out.println("Error: Port is currently in use");
-        }
-        else
-        {
-            CommPort commPort = portIdentifier.open(this.getClass().getName(),2000);
-
-            if ( commPort instanceof SerialPort )
-            {
-                SerialPort serialPort = (SerialPort) commPort;
-                serialPort.setSerialPortParams(19200,SerialPort.DATABITS_8,SerialPort.STOPBITS_1,SerialPort.PARITY_NONE);
-                serialPort.setFlowControlMode(serialPort.FLOWCONTROL_RTSCTS_OUT);
-                OutputStream out = serialPort.getOutputStream();
-
-                runnable = new Thread(new SerialWriter(out,factory));
-                runnable.start();
-            }
-            else
-            {
-                System.out.println("Error: Only serial ports are handled by this example.");
-            }
-        }
+        ComConnection con = new ComConnection(portName);
+        runnable = new Thread(new SerialWriter(con,factory));
+        runnable.start();
     }
 
     public static class SerialWriter implements Runnable
     {
     	PacketsFactory factory;
-    	
+    	Connection<Packet> connection;
         OutputStream out;
         Scanner user_input = new Scanner( System.in );
         public static final String connectionCommand =
@@ -177,9 +156,9 @@ public class Simulator
                         "</upstreamPacket>" +
                         "</packet>";
         /* ---------------------------------------------------------------------------------------------- */
-        public SerialWriter ( OutputStream out,PacketsFactory factory )
+        public SerialWriter ( Connection<Packet> connection,PacketsFactory factory )
         {
-            this.out = out;
+            this.connection = connection;
             this.factory = factory;
         }
 
@@ -187,6 +166,7 @@ public class Simulator
         {
             byte[] bytes = null;
             try{
+            	connection.connect();
                 while (true)
                 {
                     System.out.println("\nPlease enter a command to simulate: \n");
@@ -296,16 +276,12 @@ public class Simulator
                     }
                     
                     CMDPacket packet =  factory.createCMDPacket(12332, opCode, 1, 0);
-                    bytes = packet.toBytes();
-                    for (int i=0; i<bytes.length; i++){
-                        this.out.write(bytes[i]);
-                    }
-                    this.out.write(10);
-
-                    this.out.flush();
+                    connection.send(packet);
                 }
                 //this.out.close();
             } catch (IOException e) {
+                e.printStackTrace();
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
