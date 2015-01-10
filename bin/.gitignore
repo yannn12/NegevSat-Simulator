@@ -7,3 +7,5 @@
 /xmlPacketsFactory.class
 /BinPacketsFactory.class
 /XmlPacketsFactory.class
+/Connection.class
+/ComConnection.class
