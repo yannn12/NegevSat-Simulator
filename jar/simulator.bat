@@ -5,7 +5,7 @@ if not exist "%JAVA_HOME%\bin\java.exe" goto END
 
 SET /P port=Please enter serial port name:
 IF %port%=="" GOTO PortNotDefined
-"%JAVA_HOME%\bin\java.exe" -jar simulator-1.1.jar -port "%port%"
+"%JAVA_HOME%\bin\java.exe" -jar simulator-1.1.jar -port "%port%" -p xml
 goto END
 
 :noJavaHome
@@ -14,7 +14,7 @@ goto END
 
 :PortNotDefined
 @echo didn't enter port, will use COM1 as default
-"%JAVA_HOME%\bin\java.exe" -jar simulator-1.1.jar -p xml
+"%JAVA_HOME%\bin\java.exe" -jar simulator-1.1.jar -port COM1 -p xml
 goto END
 
 :END
