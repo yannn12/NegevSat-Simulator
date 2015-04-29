@@ -23,6 +23,15 @@ public class Simulator
         ComConnection con = new ComConnection(portName);
         runnable = new Thread(new SerialWriter(con,factory));
         runnable.start();
+        new Thread(new Runnable() {
+			
+			@Override
+			public void run() {
+				for(;;)
+					con.receive();
+				
+			}
+		}).start();
     }
 
     public static class SerialWriter implements Runnable
@@ -295,13 +304,13 @@ public class Simulator
             int argSize = args.length;
             String port = "COM1";
             for(int i=0;i<args.length;i++){
-            	if(args[i].equalsIgnoreCase("-port")&&i==args.length){
+            	if(args[i].equalsIgnoreCase("-port")&&i<args.length-1){
             		i++;
                     if (args[i].contains("COM")){
                         port = args[i];
                     }
             	}
-                else if(args[i].equalsIgnoreCase("-p")&&i==args.length){
+                else if(args[i].equalsIgnoreCase("-p")&&i<args.length-1){
                 	i++;
                 	if (args[i].equalsIgnoreCase("binary")){
                 		factory = new BinPacketsFactory();

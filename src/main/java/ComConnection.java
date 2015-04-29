@@ -1,5 +1,7 @@
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Vector;
 
 import gnu.io.CommPort;
@@ -14,7 +16,8 @@ public class ComConnection implements Connection<Packet> {
 	
 	String portName;
 	SerialPort serialPort;
-	OutputStream stream;
+	OutputStream outStream;
+	InputStream inStream;
 	
 	public ComConnection(String port) {
 		this.portName = port;
@@ -43,9 +46,10 @@ public class ComConnection implements Connection<Packet> {
 
 		serialPort.setSerialPortParams(19200,SerialPort.DATABITS_8,SerialPort.STOPBITS_1,SerialPort.PARITY_NONE);
 
-        serialPort.setFlowControlMode(serialPort.FLOWCONTROL_RTSCTS_OUT);
+        serialPort.setFlowControlMode(serialPort.FLOWCONTROL_RTSCTS_OUT|serialPort.FLOWCONTROL_RTSCTS_IN);
 
-        stream = serialPort.getOutputStream();
+        outStream = serialPort.getOutputStream();
+        inStream = serialPort.getInputStream();
         return true;
 	}
 
@@ -54,11 +58,11 @@ public class ComConnection implements Connection<Packet> {
 		byte[] array = msg.toBytes();
 		array = removeDelimiter(array);
 		try {
-			stream.write(array, 0, array.length);
+			outStream.write(array, 0, array.length);
 
-	        this.stream.write(10);
+	        this.outStream.write(10);
 	
-	        this.stream.flush();
+	        this.outStream.flush();
 		} catch (IOException e) {
 			return false;
 		}
@@ -91,7 +95,21 @@ public class ComConnection implements Connection<Packet> {
 
 	@Override
 	public Packet receive() {
-		// TODO Auto-generated method stub
+		byte[] buffer = new byte[1024];
+		int len=-1;
+		try{
+			len = inStream.read(buffer, 0, 1024);
+		}
+		catch(Exception exp){
+			return null;
+		}
+		if(len==0)
+			return null;
+		buffer[len] = '\0';
+		len++;
+		String str = new String(buffer,StandardCharsets.UTF_8);
+		System.out.println(str);
+		
 		return null;
 	}
 
